@@ -19,6 +19,7 @@ from ansible.module_utils._text import to_bytes, to_native, to_text
 from ansible.parsing.quoting import unquote
 from ansible.parsing.utils.yaml import from_yaml
 from ansible.parsing.vault import VaultLib, b_HEADER, is_encrypted, is_encrypted_file, parse_vaulttext_envelope
+from ansible.parsing.sops import decrypt_sops_file, is_encrypted_sops_file
 from ansible.utils.path import unfrackpath
 
 try:
@@ -157,8 +158,12 @@ class DataLoader:
 
         try:
             with open(b_file_name, 'rb') as f:
-                data = f.read()
-                return self._decrypt_if_vault_data(data, b_file_name)
+                if is_encrypted_sops_file(f):
+                    # False is show_content flag
+                    return decrypt_sops_file(b_file_name), False
+                else:
+                    data = f.read()
+                    return self._decrypt_if_vault_data(data, b_file_name)
 
         except (IOError, OSError) as e:
             raise AnsibleParserError("an error occurred while trying to read the file '%s': %s" % (file_name, str(e)), orig_exc=e)
